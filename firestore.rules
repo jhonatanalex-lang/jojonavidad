@@ -1,0 +1,515 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // App explicitly supports frictionless Anonymous Auth sessions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email_verified == true && (
+          request.auth.token.email == 'yiroku20@gmail.com' ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        );
+    }
+
+    function ownsAccount(accountId) {
+      return isSignedIn() &&
+        isValidId(accountId) &&
+        exists(/databases/$(database)/documents/accounts/$(accountId)) &&
+        request.auth.uid in get(/databases/$(database)/documents/accounts/$(accountId)).data.authorizedUids;
+    }
+
+    function isGroupCreator(code) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/groups/$(code)) && (
+          get(/databases/$(database)/documents/groups/$(code)).data.creatorUid == request.auth.uid ||
+          (
+            'creatorAccountId' in get(/databases/$(database)/documents/groups/$(code)).data &&
+            ownsAccount(get(/databases/$(database)/documents/groups/$(code)).data.creatorAccountId)
+          )
+        );
+    }
+
+    function isValidAccount(data) {
+      return data.keys().hasAll([
+        'accountId',
+        'displayName',
+        'authorizedUids',
+        'createdGroupCodes',
+        'joinedGroupCodes',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'accountId',
+        'displayName',
+        'authorizedUids',
+        'createdGroupCodes',
+        'joinedGroupCodes',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      isValidId(data.accountId) &&
+      data.displayName is string && data.displayName.size() >= 2 && data.displayName.size() <= 60 &&
+      data.authorizedUids is list && data.authorizedUids.size() >= 1 && data.authorizedUids.size() <= 10 &&
+      data.authorizedUids[0] is string &&
+      data.createdGroupCodes is list && data.createdGroupCodes.size() <= 30 &&
+      (data.createdGroupCodes.size() == 0 || data.createdGroupCodes[0] is string) &&
+      data.joinedGroupCodes is list && data.joinedGroupCodes.size() <= 30 &&
+      (data.joinedGroupCodes.size() == 0 || data.joinedGroupCodes[0] is string) &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidGroup(data) {
+      return data.keys().hasAll([
+        'code',
+        'name',
+        'expectedMembers',
+        'creatorUid',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'code',
+        'name',
+        'expectedMembers',
+        'creatorUid',
+        'creatorName',
+        'creatorAccountId',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.code is string && data.code.size() >= 3 && data.code.size() <= 40 &&
+      data.code.matches('^[A-Z0-9_\\-]+$') &&
+      data.name is string && data.name.size() >= 2 && data.name.size() <= 60 &&
+      data.expectedMembers is int && data.expectedMembers >= 2 && data.expectedMembers <= 100 &&
+      data.creatorUid is string && data.creatorUid.size() >= 1 && data.creatorUid.size() <= 128 &&
+      (!('creatorName' in data) || (data.creatorName is string && data.creatorName.size() <= 60)) &&
+      (!('creatorAccountId' in data) || isValidId(data.creatorAccountId)) &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidMember(data) {
+      return data.keys().hasAll([
+        'name',
+        'ownerUid',
+        'familyCode',
+        'casaca',
+        'polo',
+        'chompa',
+        'pantalon',
+        'zapatillas',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'name',
+        'ownerUid',
+        'accountId',
+        'familyCode',
+        'casaca',
+        'polo',
+        'chompa',
+        'pantalon',
+        'zapatillas',
+        'notas',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.name is string && data.name.size() >= 2 && data.name.size() <= 60 &&
+      data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128 &&
+      (!('accountId' in data) || isValidId(data.accountId)) &&
+      data.familyCode is string && data.familyCode.size() >= 3 && data.familyCode.size() <= 40 &&
+      data.familyCode.matches('^[A-Z0-9_\\-]+$') &&
+      data.casaca is string && data.casaca.size() <= 40 &&
+      data.polo is string && data.polo.size() <= 40 &&
+      data.chompa is string && data.chompa.size() <= 40 &&
+      data.pantalon is string && data.pantalon.size() <= 40 &&
+      data.zapatillas is string && data.zapatillas.size() <= 40 &&
+      (!('notas' in data) || (data.notas is string && data.notas.size() <= 200)) &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidWish(data) {
+      return data.keys().hasAll([
+        'memberId',
+        'memberName',
+        'ownerUid',
+        'familyCode',
+        'title',
+        'description',
+        'reservedAnonymously',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'memberId',
+        'memberName',
+        'ownerUid',
+        'accountId',
+        'familyCode',
+        'title',
+        'description',
+        'productUrl',
+        'linkTitle',
+        'linkImage',
+        'linkSite',
+        'linkDesc',
+        'linkPrice',
+        'photoId',
+        'reservedAnonymously',
+        'isFavorite',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      isValidId(data.memberId) &&
+      data.memberName is string && data.memberName.size() >= 2 && data.memberName.size() <= 60 &&
+      data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128 &&
+      (!('accountId' in data) || isValidId(data.accountId)) &&
+      data.familyCode is string && data.familyCode.size() >= 3 && data.familyCode.size() <= 40 &&
+      data.familyCode.matches('^[A-Z0-9_\\-]+$') &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+      data.description is string && data.description.size() >= 1 && data.description.size() <= 600 &&
+      (!('productUrl' in data) || (data.productUrl is string && data.productUrl.size() <= 1000)) &&
+      (!('linkTitle' in data) || (data.linkTitle is string && data.linkTitle.size() <= 160)) &&
+      (!('linkImage' in data) || (data.linkImage is string && data.linkImage.size() <= 1000)) &&
+      (!('linkSite' in data) || (data.linkSite is string && data.linkSite.size() <= 60)) &&
+      (!('linkDesc' in data) || (data.linkDesc is string && data.linkDesc.size() <= 240)) &&
+      (!('linkPrice' in data) || (data.linkPrice is string && data.linkPrice.size() <= 40)) &&
+      (!('photoId' in data) || (data.photoId is string && data.photoId.size() <= 128)) &&
+      data.reservedAnonymously is bool &&
+      (!('isFavorite' in data) || data.isFavorite is bool) &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidWishPhoto(data) {
+      return data.keys().hasAll([
+        'wishId',
+        'ownerUid',
+        'familyCode',
+        'dataUrl',
+        'createdAt'
+      ]) &&
+      data.keys().hasOnly([
+        'wishId',
+        'ownerUid',
+        'accountId',
+        'familyCode',
+        'dataUrl',
+        'createdAt'
+      ]) &&
+      isValidId(data.wishId) &&
+      data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128 &&
+      (!('accountId' in data) || isValidId(data.accountId)) &&
+      data.familyCode is string && data.familyCode.size() >= 3 && data.familyCode.size() <= 40 &&
+      data.familyCode.matches('^[A-Z0-9_\\-]+$') &&
+      data.dataUrl is string && data.dataUrl.size() >= 10 && data.dataUrl.size() <= 350000 &&
+      data.createdAt is timestamp;
+    }
+
+    // Boot connectivity probe document
+    match /test/connection {
+      allow get: if isSignedIn();
+    }
+
+    // Admin registry (read-only for verified users checking their own admin record)
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && request.auth.token.email_verified == true && isValidId(adminUid) && request.auth.uid == adminUid;
+    }
+
+    // Privacy-preserving quick-access accounts keyed by SHA-256 hash of phone digits (no PII stored)
+    match /accounts/{accountId} {
+      allow get: if isSignedIn() && isValidId(accountId);
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+        isValidId(accountId) &&
+        isValidAccount(incoming()) &&
+        incoming().accountId == accountId &&
+        request.auth.uid in incoming().authorizedUids &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn() &&
+        isValidId(accountId) &&
+        isValidAccount(incoming()) &&
+        incoming().accountId == existing().accountId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action 1: Authorized session updates displayName, device list, or group code lists
+          (
+            (request.auth.uid in existing().authorizedUids || isAdmin()) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName',
+              'authorizedUids',
+              'createdGroupCodes',
+              'joinedGroupCodes',
+              'updatedAt'
+            ])
+          ) ||
+          // Action 2: New device session links itself after verifying matching Name + Phone hash
+          (
+            incoming().displayName == existing().displayName &&
+            request.auth.uid in incoming().authorizedUids &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'authorizedUids',
+              'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isSignedIn() &&
+        isValidId(accountId) &&
+        (request.auth.uid in existing().authorizedUids || isAdmin());
+    }
+
+    // Secret Santa groups indexed by unique uppercase join code
+    match /groups/{groupCode} {
+      allow get: if isSignedIn() && isValidId(groupCode) && (resource == null || (resource.data.code is string && resource.data.code.size() >= 3));
+      allow list: if isSignedIn() && resource.data.creatorUid == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+        isValidId(groupCode) &&
+        isValidGroup(incoming()) &&
+        incoming().code == groupCode &&
+        incoming().creatorUid == request.auth.uid &&
+        (!('creatorAccountId' in incoming()) || ownsAccount(incoming().creatorAccountId)) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn() &&
+        isValidId(groupCode) &&
+        isValidGroup(incoming()) &&
+        incoming().code == existing().code &&
+        incoming().creatorUid == existing().creatorUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action 1: Group creator (by UID or linked account) or admin edits group settings
+          (
+            (
+              existing().creatorUid == request.auth.uid ||
+              ('creatorAccountId' in existing() && ownsAccount(existing().creatorAccountId)) ||
+              isAdmin()
+            ) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'expectedMembers', 'updatedAt'
+            ])
+          ) ||
+          // Action 2: Original creator backfills creatorAccountId once for multi-device recovery
+          (
+            existing().creatorUid == request.auth.uid &&
+            !('creatorAccountId' in existing()) &&
+            'creatorAccountId' in incoming() &&
+            ownsAccount(incoming().creatorAccountId) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'creatorAccountId', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isSignedIn() &&
+        isValidId(groupCode) &&
+        (
+          existing().creatorUid == request.auth.uid ||
+          ('creatorAccountId' in existing() && ownsAccount(existing().creatorAccountId)) ||
+          isAdmin()
+        );
+    }
+
+    // Family participants & sizes (no PII stored)
+    match /members/{memberId} {
+      allow get: if isSignedIn() && isValidId(memberId) && (resource == null || (resource.data.familyCode is string && resource.data.familyCode.size() >= 3));
+      allow list: if isSignedIn() && (
+        resource.data.ownerUid == request.auth.uid ||
+        (resource.data.familyCode is string && resource.data.familyCode.size() >= 3)
+      );
+
+      allow create: if isSignedIn() &&
+        isValidId(memberId) &&
+        isValidMember(incoming()) &&
+        (!('accountId' in incoming()) || ownsAccount(incoming().accountId)) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          incoming().ownerUid == request.auth.uid ||
+          ((isAdmin() || isGroupCreator(incoming().familyCode)) && incoming().ownerUid == 'UNCLAIMED')
+        );
+
+      allow update: if isSignedIn() &&
+        isValidId(memberId) &&
+        isValidMember(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().familyCode == existing().familyCode &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action 1: Member (by UID or linked account), group creator, or admin edits sizes/name
+          (
+            (
+              existing().ownerUid == request.auth.uid ||
+              ('accountId' in existing() && ownsAccount(existing().accountId)) ||
+              isAdmin() ||
+              isGroupCreator(existing().familyCode)
+            ) &&
+            incoming().ownerUid == existing().ownerUid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'casaca', 'polo', 'chompa', 'pantalon', 'zapatillas', 'notas', 'name', 'updatedAt'
+            ])
+          ) ||
+          // Action 2: Participant claims an UNCLAIMED pre-registered slot
+          (
+            existing().ownerUid == 'UNCLAIMED' &&
+            incoming().ownerUid == request.auth.uid &&
+            (!('accountId' in incoming()) || ownsAccount(incoming().accountId)) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['ownerUid', 'accountId', 'updatedAt'])
+          ) ||
+          // Action 3: Original owner backfills accountId once for multi-device access
+          (
+            existing().ownerUid == request.auth.uid &&
+            !('accountId' in existing()) &&
+            'accountId' in incoming() &&
+            ownsAccount(incoming().accountId) &&
+            incoming().ownerUid == existing().ownerUid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['accountId', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isSignedIn() &&
+        isValidId(memberId) &&
+        (
+          existing().ownerUid == request.auth.uid ||
+          ('accountId' in existing() && ownsAccount(existing().accountId)) ||
+          isAdmin() ||
+          isGroupCreator(existing().familyCode)
+        );
+    }
+
+    // Family wish list items
+    match /wishes/{wishId} {
+      allow get: if isSignedIn() && isValidId(wishId) && (resource == null || (resource.data.familyCode is string && resource.data.familyCode.size() >= 3));
+      allow list: if isSignedIn() && resource.data.familyCode is string && resource.data.familyCode.size() >= 3;
+
+      allow create: if isSignedIn() &&
+        isValidId(wishId) &&
+        isValidWish(incoming()) &&
+        incoming().ownerUid == request.auth.uid &&
+        (!('accountId' in incoming()) || ownsAccount(incoming().accountId)) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/members/$(incoming().memberId)) &&
+        (
+          get(/databases/$(database)/documents/members/$(incoming().memberId)).data.ownerUid == request.auth.uid ||
+          (
+            'accountId' in get(/databases/$(database)/documents/members/$(incoming().memberId)).data &&
+            ownsAccount(get(/databases/$(database)/documents/members/$(incoming().memberId)).data.accountId)
+          ) ||
+          isAdmin()
+        );
+
+      allow update: if isSignedIn() &&
+        isValidId(wishId) &&
+        isValidWish(incoming()) &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().memberId == existing().memberId &&
+        incoming().familyCode == existing().familyCode &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action 1: Owner (by UID or linked account) or Admin edits wish details
+          (
+            (
+              existing().ownerUid == request.auth.uid ||
+              ('accountId' in existing() && ownsAccount(existing().accountId)) ||
+              isAdmin()
+            ) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title',
+              'description',
+              'productUrl',
+              'linkTitle',
+              'linkImage',
+              'linkSite',
+              'linkDesc',
+              'linkPrice',
+              'photoId',
+              'reservedAnonymously',
+              'isFavorite',
+              'updatedAt'
+            ])
+          ) ||
+          // Action 2: Any participant anonymously toggles reservation
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'reservedAnonymously',
+              'updatedAt'
+            ])
+          ) ||
+          // Action 3: Original owner backfills accountId once for multi-device access
+          (
+            existing().ownerUid == request.auth.uid &&
+            !('accountId' in existing()) &&
+            'accountId' in incoming() &&
+            ownsAccount(incoming().accountId) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'accountId',
+              'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isSignedIn() &&
+        isValidId(wishId) &&
+        (
+          existing().ownerUid == request.auth.uid ||
+          ('accountId' in existing() && ownsAccount(existing().accountId)) ||
+          isAdmin()
+        );
+    }
+
+    // Compressed wish photos (isolated from main wishes feed documents)
+    match /wishPhotos/{photoId} {
+      allow get: if isSignedIn() && isValidId(photoId) && (resource == null || (resource.data.familyCode is string && resource.data.familyCode.size() >= 3));
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+        isValidId(photoId) &&
+        isValidWishPhoto(incoming()) &&
+        incoming().ownerUid == request.auth.uid &&
+        (!('accountId' in incoming()) || ownsAccount(incoming().accountId)) &&
+        incoming().createdAt == request.time;
+
+      allow delete: if isSignedIn() &&
+        isValidId(photoId) &&
+        (
+          existing().ownerUid == request.auth.uid ||
+          ('accountId' in existing() && ownsAccount(existing().accountId)) ||
+          isAdmin()
+        );
+    }
+  }
+}

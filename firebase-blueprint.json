@@ -1,0 +1,400 @@
+{
+  "entities": {
+    "Group": {
+      "title": "Group",
+      "description": "Secret Santa family/friends group created by an organizer with shareable code and participant count.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 40,
+          "pattern": "^[A-Z0-9_\\-]+$",
+          "description": "Unique uppercase join code (also used as document ID)."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60,
+          "description": "Friendly display name of the Christmas group."
+        },
+        "expectedMembers": {
+          "type": "integer",
+          "description": "Expected number of participants in the exchange (2-100)."
+        },
+        "creatorUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Firebase Auth UID of the user who created the group."
+        },
+        "creatorName": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Display name of the group creator."
+        },
+        "creatorAccountId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Optional hashed phone-based quick-access account ID of the creator."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "expectedMembers",
+        "creatorUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Family participant profile and clothing/shoe sizes for Secret Santa.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60,
+          "description": "Normalized participant display name."
+        },
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Firebase Auth UID of the participant, or UNCLAIMED if pre-created by organizer."
+        },
+        "accountId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Optional hashed phone-based quick-access account ID of the participant."
+        },
+        "familyCode": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 40,
+          "pattern": "^[A-Z0-9_\\-]+$",
+          "description": "Shared family exchange identifier."
+        },
+        "casaca": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Jacket size."
+        },
+        "polo": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Shirt size."
+        },
+        "chompa": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Sweater size."
+        },
+        "pantalon": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Pants size."
+        },
+        "zapatillas": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Shoe size."
+        },
+        "notas": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Optional fit or style preferences."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "name",
+        "ownerUid",
+        "familyCode",
+        "casaca",
+        "polo",
+        "chompa",
+        "pantalon",
+        "zapatillas",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Wish": {
+      "title": "Wish",
+      "description": "Gift wish submitted by a family member with optional product link preview and photo reference.",
+      "type": "object",
+      "properties": {
+        "memberId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Document ID of the member who owns this wish."
+        },
+        "memberName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60,
+          "description": "Normalized member display name."
+        },
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Firebase Auth UID of the wish creator."
+        },
+        "accountId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Optional hashed phone-based quick-access account ID of the wish creator."
+        },
+        "familyCode": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 40,
+          "pattern": "^[A-Z0-9_\\-]+$",
+          "description": "Shared family exchange identifier."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140,
+          "description": "Gift title."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600,
+          "description": "Color, size, model, or gift details."
+        },
+        "productUrl": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional product URL."
+        },
+        "linkTitle": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "Scraped OpenGraph title."
+        },
+        "linkImage": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Scraped OpenGraph image URL."
+        },
+        "linkSite": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Scraped website hostname or brand."
+        },
+        "linkDesc": {
+          "type": "string",
+          "maxLength": 240,
+          "description": "Scraped OpenGraph description."
+        },
+        "linkPrice": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Optional scraped price string."
+        },
+        "photoId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Document ID in wishPhotos if a camera/gallery photo was attached."
+        },
+        "reservedAnonymously": {
+          "type": "boolean",
+          "description": "True when someone anonymously marks the gift as chosen."
+        },
+        "isFavorite": {
+          "type": "boolean",
+          "description": "True when the member highlights this wish as their single primary favorite gift."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "memberId",
+        "memberName",
+        "ownerUid",
+        "familyCode",
+        "title",
+        "description",
+        "reservedAnonymously",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WishPhoto": {
+      "title": "WishPhoto",
+      "description": "Compressed JPEG data URL for a camera/gallery photo attached to a wish.",
+      "type": "object",
+      "properties": {
+        "wishId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Associated wish document ID."
+        },
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Firebase Auth UID of the uploader."
+        },
+        "accountId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Optional hashed phone-based quick-access account ID of the uploader."
+        },
+        "familyCode": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 40,
+          "pattern": "^[A-Z0-9_\\-]+$",
+          "description": "Shared family exchange identifier."
+        },
+        "dataUrl": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 350000,
+          "description": "Compressed base64 JPEG data URL."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        }
+      },
+      "required": [
+        "wishId",
+        "ownerUid",
+        "familyCode",
+        "dataUrl",
+        "createdAt"
+      ]
+    },
+    "Account": {
+      "title": "Account",
+      "description": "Privacy-preserving multi-device quick-access profile keyed by a one-way SHA-256 hash of the user's phone number (no raw phone numbers stored).",
+      "type": "object",
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Deterministic SHA-256 hash identifier derived from normalized phone digits."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60,
+          "description": "Normalized participant display name."
+        },
+        "authorizedUids": {
+          "type": "array",
+          "description": "Bounded list (max 10) of Firebase Anonymous Auth UIDs authorized for this account."
+        },
+        "createdGroupCodes": {
+          "type": "array",
+          "description": "Bounded list (max 30) of group codes created by this account."
+        },
+        "joinedGroupCodes": {
+          "type": "array",
+          "description": "Bounded list (max 30) of group codes joined by this account."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "accountId",
+        "displayName",
+        "authorizedUids",
+        "createdGroupCodes",
+        "joinedGroupCodes",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/accounts/{accountId}": {
+      "schema": {
+        "$ref": "#/entities/Account"
+      },
+      "description": "Hashed quick-access accounts for multi-browser group recovery without storing raw phone PII."
+    },
+    "/groups/{groupCode}": {
+      "schema": {
+        "$ref": "#/entities/Group"
+      },
+      "description": "Family or friends Secret Santa groups indexed by their shareable code."
+    },
+    "/members/{memberId}": {
+      "schema": {
+        "$ref": "#/entities/Member"
+      },
+      "description": "Participant profiles and clothing sizes."
+    },
+    "/wishes/{wishId}": {
+      "schema": {
+        "$ref": "#/entities/Wish"
+      },
+      "description": "Family wishlist items."
+    },
+    "/wishPhotos/{photoId}": {
+      "schema": {
+        "$ref": "#/entities/WishPhoto"
+      },
+      "description": "Compressed camera/gallery photos for wishes."
+    }
+  }
+}

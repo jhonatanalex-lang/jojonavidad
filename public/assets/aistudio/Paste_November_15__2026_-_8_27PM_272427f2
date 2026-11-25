@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>Lista de Deseos</title>
+  
+  <style>
+    /* Estilos Base */
+    body { font-family: sans-serif; background-color: #f0fdf4; font-size: 16px; margin: 0; padding: 0; }
+    .hidden { display: none !important; }
+    
+    /* Loader */
+    #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    
+    /* Componentes */
+    .wish-card { border: 1px solid #dcfce7; border-radius: 0.75rem; overflow: hidden; background: white; margin-bottom: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .wish-header { padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: #ffffff; }
+    .wish-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; border-top: 1px solid transparent; background-color: #f8fafc; }
+    .wish-content.open { max-height: 1200px; border-top-color: #e2e8f0; }
+
+    /* Inputs y Botones */
+    input, select, textarea { font-size: 1.125rem !important; }
+    .btn-press:active { transform: scale(0.98); }
+    .show-flex { display: flex !important; }
+
+    /* Patrón de fondo seguro (movido aquí para evitar errores de sintaxis en HTML) */
+    .bg-pattern {
+      background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+      opacity: 0.1;
+    }
+  </style>
+</head>
+<body class="md:p-4 bg-green-50 min-h-screen flex justify-center items-start">
+
+  <!-- LOADER -->
+  <div id="loader" class="hidden">
+    <!-- Icono simple mientras cargan los iconos externos -->
+    <div style="font-size: 3rem;">⏳</div>
+    <p class="text-xl font-bold text-green-800 mt-2">Cargando...</p>
+    <button onclick="forceCloseLoader()" class="mt-4 text-xs text-gray-400 underline">Cancelar</button>
+  </div>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <div class="w-full h-full md:h-auto md:max-w-md bg-white md:rounded-2xl shadow-xl overflow-hidden min-h-screen md:min-h-0 relative flex flex-col">
+    
+    <!-- HEADER -->
+    <div class="bg-green-700 p-8 text-center text-white relative shadow-md shrink-0">
+      <div class="absolute top-0 left-0 w-full h-full bg-pattern"></div>
+      <h1 class="text-3xl font-extrabold tracking-tight relative z-10">🎄 Deseos Familiares</h1>
+      <p class="text-green-100 text-lg mt-1 relative z-10">Intercambio de Regalos</p>
+    </div>
+
+    <!-- MENSAJES DE ALERTA -->
+    <div id="msg-box" class="hidden mx-4 mt-4 p-4 rounded-xl text-center text-base font-bold shadow-sm shrink-0"></div>
+
+    <!-- PANTALLA 1: LOGIN -->
+    <div id="screen-login" class="p-8 space-y-8 flex flex-col justify-center grow">
+      <div class="text-center space-y-4">
+        <div class="inline-block p-4 bg-green-50 rounded-full">
+          <i class="ph ph-user-circle text-7xl text-green-700"></i>
+        </div>
+        <p class="text-gray-600 text-lg">Ingresa tu nombre para entrar</p>
+      </div>
+      
+      <form onsubmit="handleLogin(event)" class="space-y-6">
+        <input type="text" id="login-input" 
+               class="w-full p-5 border-2 border-green-100 rounded-2xl text-center text-xl font-bold outline-none focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all uppercase placeholder-gray-300 text-gray-700" 
+               placeholder="TU NOMBRE" 
+               oninput="this.value = this.value.toUpperCase()" 
+               required>
+        
+        <button type="submit" class="btn-press w-full bg-green-700 text-white p-5 rounded-2xl text-xl font-bold shadow-lg shadow-green-200 hover:bg-green-800 transition-colors">
+            ENTRAR A LA APP
+        </button>
+      </form>
+    </div>
+
+    <!-- PANTALLA 2: APP -->
+    <div id="screen-app" class="hidden flex-col grow h-full w-full">
+      <div class="flex justify-between items-center p-5 border-b bg-gray-50 shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 bg-green-200 rounded-full flex items-center justify-center text-green-800 font-bold">
+            <i class="ph ph-smiley"></i>
+          </div>
+          <span id="user-display" class="font-bold text-green-800 text-lg">Hola!</span>
+        </div>
+        <button onclick="logout()" class="text-red-500 text-sm font-bold uppercase bg-red-50 px-3 py-1 rounded-full">
+          <i class="ph ph-sign-out mr-1"></i>Salir
+        </button>
+      </div>
+
+      <!-- Navegación Tabs -->
+      <div class="flex border-b shadow-sm sticky top-0 bg-white z-20 shrink-0">
+        <button onclick="goTab('upload')" id="btn-upload" class="flex-1 p-4 text-center border-b-4 transition-colors">
+          <i class="ph ph-upload-simple text-2xl mb-1 block"></i>
+          <span class="text-xs font-bold uppercase tracking-wider">Subir</span>
+        </button>
+        <button onclick="goTab('list')" id="btn-list" class="flex-1 p-4 text-center border-b-4 transition-colors border-transparent text-gray-400">
+          <i class="ph ph-list-dashes text-2xl mb-1 block"></i>
+          <span class="text-xs font-bold uppercase tracking-wider">Lista</span>
+        </button>
+        <button onclick="goTab('profile')" id="btn-profile" class="flex-1 p-4 text-center border-b-4 transition-colors border-transparent text-gray-400">
+          <i class="ph ph-user text-2xl mb-1 block"></i>
+          <span class="text-xs font-bold uppercase tracking-wider">Perfil</span>
+        </button>
+      </div>
+
+      <!-- Contenido Scrollable -->
+      <div class="flex-1 overflow-y-auto bg-gray-50 pb-20 w-full">
+        
+        <!-- TAB SUBIR -->
+        <div id="tab-upload" class="p-5 space-y-6">
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <i class="ph ph-gift text-green-600"></i> Nuevo Deseo
+            </h2>
+            <form onsubmit="handleSaveWish(event)" id="form-wish" class="space-y-4">
+              <input type="hidden" id="hidden-member">
+              
+              <div>
+                <label class="block text-sm font-bold text-gray-500 mb-1 ml-1">¿Qué quieres?</label>
+                <input type="text" id="wish-title" class="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none transition-all text-lg" placeholder="Ej. Zapatillas Nike" required>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-bold text-gray-500 mb-1 ml-1">Detalles (Talla, color...)</label>
+                <textarea id="wish-desc" class="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none transition-all text-lg" rows="3" placeholder="Ej. Talla 42, color negro..." required></textarea>
+              </div>
+              
+              <label class="btn-press flex flex-col items-center justify-center w-full p-6 border-2 border-dashed border-green-300 rounded-xl cursor-pointer bg-green-50 hover:bg-green-100 transition-colors">
+                <i class="ph ph-camera text-green-600 text-4xl mb-2"></i>
+                <span id="file-label" class="text-base font-bold text-green-700">Tocar para adjuntar foto</span>
+                <span class="text-xs text-green-600 mt-1 opacity-70">Opcional</span>
+                <input type="file" id="wish-file" class="hidden" accept="image/*" onchange="updateFileLabel(this)">
+              </label>
+
+              <button type="submit" class="btn-press w-full bg-green-600 text-white p-5 rounded-xl text-xl font-bold shadow-lg shadow-green-200 hover:bg-green-700 transition-all mt-2">
+                GUARDAR DESEO
+              </button>
+            </form>
+          </div>
+
+          <div class="pt-2">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest text-center mb-4">Mis Deseos Subidos</h3>
+            <div id="my-wishes" class="space-y-3 pb-8"></div>
+          </div>
+        </div>
+
+        <!-- TAB LISTA -->
+        <div id="tab-list" class="hidden p-5 space-y-6">
+          <div class="text-center py-2">
+            <h3 class="text-2xl font-bold text-green-800">Deseos de Todos</h3>
+            <p class="text-gray-500 text-sm">Toca una tarjeta para ver detalles</p>
+          </div>
+          <div id="all-wishes" class="pb-8"></div>
+        </div>
+
+        <!-- TAB PERFIL -->
+        <div id="tab-profile" class="hidden p-5 space-y-6">
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <label class="block text-center text-base font-bold text-gray-500 mb-3">¿De quién quieres ver las tallas?</label>
+            <select id="family-select" onchange="loadFamily(this.value)" class="w-full p-4 border-2 border-gray-200 rounded-xl bg-white font-bold text-gray-700 text-lg focus:border-green-500 outline-none">
+              <option value="">Selecciona un familiar...</option>
+            </select>
+          </div>
+          <div id="family-content" class="pb-8"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL TALLAS -->
+  <div id="modal-sizes" class="hidden fixed inset-0 bg-black bg-opacity-90 z-40 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-sm space-y-6 shadow-2xl animate-[fadeIn_0.3s_ease-out]">
+      <div class="text-center border-b pb-4">
+        <h3 class="text-2xl font-bold text-green-800">¡Bienvenido!</h3>
+        <p class="text-base text-gray-600 mt-1">Para empezar, necesitamos tus tallas.</p>
+      </div>
+      
+      <form onsubmit="handleSaveSizes(event)" class="space-y-3">
+        <div class="grid grid-cols-1 gap-3">
+          <input id="sz-casaca" placeholder="Talla Casaca" class="w-full p-3 bg-gray-50 border rounded-xl" required>
+          <input id="sz-polo" placeholder="Talla Polo" class="w-full p-3 bg-gray-50 border rounded-xl" required>
+          <input id="sz-chompa" placeholder="Talla Chompa" class="w-full p-3 bg-gray-50 border rounded-xl" required>
+          <input id="sz-pantalon" placeholder="Talla Pantalon" class="w-full p-3 bg-gray-50 border rounded-xl" required>
+          <input id="sz-zapatillas" placeholder="Talla Zapatillas" class="w-full p-3 bg-gray-50 border rounded-xl" required>
+        </div>
+        <button type="submit" class="btn-press w-full bg-green-700 text-white p-4 rounded-xl text-lg font-bold mt-4 shadow-lg">
+          GUARDAR Y CONTINUAR
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- LIBRERÍAS EXTERNAS AL FINAL PARA EVITAR ERRORES DE PARSEO -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <!-- LÓGICA DE LA APP -->
+  <script>
+    // --- MOCK DE SEGURIDAD (PARA QUE NO FALLE SI SE ABRE FUERA DE DRIVE) ---
+    if (typeof google === 'undefined') {
+      window.google = {
+        script: {
+          run: {
+            withSuccessHandler: function(cb) { this.ok = cb; return this; },
+            withFailureHandler: function(cb) { this.fail = cb; return this; },
+            authenticateUser: function(n) { setTimeout(() => this.ok(true), 800); },
+            getProfile: function(n) { setTimeout(() => this.ok(null), 800); },
+            saveProfile: function(d) { setTimeout(() => this.ok("OK"), 800); },
+            getWishes: function() { setTimeout(() => this.ok([]), 800); },
+            getAllMembers: function() { setTimeout(() => this.ok(["MAMA", "PAPA", "YO"]), 500); },
+            uploadImageAndSaveWish: function(d) { setTimeout(() => this.ok("OK"), 1500); }
+          }
+        }
+      };
+    }
+
+    // VARIABLES GLOBALES
+    let CURRENT_USER = '';
+    let loaderTimeout;
+
+    // --- UI TOOLS ---
+    function loader(show, text="Cargando...") { 
+      const el = document.getElementById('loader');
+      if(!el) return;
+      
+      if(loaderTimeout) clearTimeout(loaderTimeout);
+
+      if(show) {
+         // Verificación segura del elemento p
+         const pEl = el.querySelector('p');
+         if(pEl) pEl.innerText = text;
+         
+         el.classList.remove('hidden');
+         
+         // Temporizador de seguridad: si tarda mucho, muestra botón cancelar
+         loaderTimeout = setTimeout(() => {
+            if(pEl) pEl.innerText = "Tarda demasiado...";
+         }, 8000);
+      } else {
+         el.classList.add('hidden');
+      }
+    }
+
+    function forceCloseLoader() {
+      document.getElementById('loader').classList.add('hidden');
+    }
+    
+    function notify(msg, isError) {
+      const el = document.getElementById('msg-box');
+      if(!el) return;
+      
+      const icon = isError ? 'ph-warning-circle' : 'ph-check-circle';
+      const colorClass = isError 
+        ? 'bg-red-100 text-red-700 border-red-200' 
+        : 'bg-green-100 text-green-800 border-green-200';
+        
+      el.innerHTML = `<i class="ph ${icon} text-2xl mb-1 block"></i> ${msg}`;
+      el.className = `mx-4 mt-4 p-4 rounded-xl text-center text-lg font-bold shadow-sm border ${colorClass}`;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+
+    function updateFileLabel(input) {
+      const label = document.getElementById('file-label');
+      const container = label.parentElement;
+      
+      if (input.files && input.files.length > 0) {
+        label.innerText = "📸 ¡Foto lista!";
+        label.className = "text-base font-bold text-blue-600";
+        container.classList.remove('bg-green-50', 'border-green-300');
+        container.classList.add('bg-blue-50', 'border-blue-300');
+      } else {
+        label.innerText = "Tocar para adjuntar foto";
+        label.className = "text-base font-bold text-green-700";
+        container.classList.add('bg-green-50', 'border-green-300');
+        container.classList.remove('bg-blue-50', 'border-blue-300');
+      }
+    }
+
+    function fixUrl(url) {
+      if(!url || typeof url !== 'string' || url.trim() === "") return null;
+      if(url.includes('lh3.googleusercontent.com')) return url;
+      const match = url.match(/\/d\/(.+?)\//) || url.match(/id=([^&]+)/);
+      if(match && match[1]) return `https://lh3.googleusercontent.com/d/${match[1]}`;
+      return url;
+    }
+
+    function renderTags(list) {
+      if(!list || list.length === 0) return `
+        <div class="text-center py-10 opacity-50">
+          <i class="ph ph-gift text-6xl text-gray-300 mb-2"></i>
+          <p class="text-gray-500 font-medium">Aún no hay deseos aquí.</p>
+        </div>`;
+      
+      return list.map(w => {
+        const id = 'w-' + Math.random().toString(36).substr(2,9);
+        const img = fixUrl(w.urlFoto);
+        
+        return `
+        <div class="wish-card group">
+          <div class="wish-header active:bg-gray-100 transition-colors" onclick="document.getElementById('${id}').classList.toggle('open'); this.querySelector('.arrow').classList.toggle('rotate-180')">
+            <div class="flex flex-col gap-1">
+              <span class="text-xs font-bold text-green-600 uppercase tracking-wide bg-green-100 w-fit px-2 py-0.5 rounded">${w.member}</span>
+              <span class="font-bold text-gray-800 text-lg leading-tight">${w.wish}</span>
+            </div>
+            <i class="ph ph-caret-down text-gray-400 text-2xl arrow transition-transform duration-300"></i>
+          </div>
+          <div id="${id}" class="wish-content">
+            <div class="p-5 space-y-4">
+              <div>
+                 <p class="text-xs font-bold text-gray-400 uppercase mb-1">Descripción</p>
+                 <p class="text-gray-700 text-base italic bg-white p-3 rounded-lg border border-gray-100">"${w.description}"</p>
+              </div>
+              ${img ? `
+                <div>
+                  <p class="text-xs font-bold text-gray-400 uppercase mb-1">Foto de referencia</p>
+                  <img src="${img}" class="w-full h-auto rounded-xl border shadow-sm" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+                </div>` : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // --- LÓGICA PRINCIPAL ---
+    function handleLogin(e) {
+      e.preventDefault(); 
+      const inputEl = document.getElementById('login-input');
+      const name = inputEl.value.trim().toUpperCase();
+      if(!name) return;
+
+      loader(true, "Buscando usuario...");
+      
+      google.script.run
+        .withSuccessHandler(exists => {
+          if(exists) {
+            CURRENT_USER = name;
+            document.getElementById('user-display').innerText = "Hola, " + CURRENT_USER;
+            document.getElementById('hidden-member').value = CURRENT_USER;
+            
+            showAppScreen();
+            checkProfile(); 
+          } else {
+            loader(false);
+            notify("No estás en la lista. Verifica tu nombre.", true);
+          }
+        })
+        .withFailureHandler(err => {
+          loader(false);
+          notify("Error de conexión: " + err, true);
+        })
+        .authenticateUser(name);
+    }
+
+    function showAppScreen() {
+      document.getElementById('screen-login').classList.add('hidden');
+      const appScreen = document.getElementById('screen-app');
+      appScreen.classList.remove('hidden');
+      appScreen.classList.add('show-flex');
+    }
+
+    function logout() {
+      CURRENT_USER = '';
+      document.getElementById('screen-app').classList.add('hidden');
+      document.getElementById('screen-app').classList.remove('show-flex');
+      document.getElementById('screen-login').classList.remove('hidden');
+      document.getElementById('login-input').value = '';
+      document.getElementById('form-wish').reset();
+      
+      const label = document.getElementById('file-label');
+      label.innerText = "Tocar para adjuntar foto";
+      label.className = "text-base font-bold text-green-700";
+      label.parentElement.classList.add('bg-green-50', 'border-green-300');
+      label.parentElement.classList.remove('bg-blue-50', 'border-blue-300');
+    }
+
+    function checkProfile() {
+      loader(true, "Cargando tus datos...");
+      
+      google.script.run
+        .withSuccessHandler(profile => {
+          loader(false);
+          if(!profile) {
+            document.getElementById('modal-sizes').classList.remove('hidden');
+          } else {
+            goTab('upload');
+          }
+        })
+        .withFailureHandler(err => {
+          loader(false);
+          notify("Error al cargar perfil, intenta recargar.", true);
+          goTab('upload'); 
+        })
+        .getProfile(CURRENT_USER);
+    }
+
+    function goTab(tab) {
+      ['upload', 'list', 'profile'].forEach(t => {
+        document.getElementById('tab-'+t).classList.add('hidden');
+        const btn = document.getElementById('btn-'+t);
+        btn.classList.remove('border-green-600', 'text-green-700', 'bg-green-50');
+        btn.classList.add('border-transparent', 'text-gray-400');
+      });
+      
+      document.getElementById('tab-'+tab).classList.remove('hidden');
+      const activeBtn = document.getElementById('btn-'+tab);
+      activeBtn.classList.remove('border-transparent', 'text-gray-400');
+      activeBtn.classList.add('border-green-600', 'text-green-700', 'bg-green-50');
+      
+      if(tab === 'upload') loadMyWishes();
+      if(tab === 'list') loadAllWishes();
+      if(tab === 'profile') loadFamilySelect();
+    }
+
+    function handleSaveSizes(e) {
+      e.preventDefault();
+      loader(true, "Guardando tus tallas...");
+      const data = {
+        member: CURRENT_USER,
+        casaca: document.getElementById('sz-casaca').value,
+        polo: document.getElementById('sz-polo').value,
+        chompa: document.getElementById('sz-chompa').value,
+        pantalon: document.getElementById('sz-pantalon').value,
+        zapatillas: document.getElementById('sz-zapatillas').value
+      };
+      google.script.run
+        .withSuccessHandler(() => {
+          document.getElementById('modal-sizes').classList.add('hidden');
+          loader(false);
+          goTab('upload');
+          notify("¡Tallas guardadas! Ahora pide tu regalo.", false);
+        })
+        .withFailureHandler(err => {
+           loader(false);
+           notify("Error al guardar tallas: " + err, true);
+        })
+        .saveProfile(data);
+    }
+
+    function handleSaveWish(e) {
+      e.preventDefault();
+      loader(true, "Subiendo deseo...");
+
+      const member = document.getElementById('hidden-member').value || CURRENT_USER;
+      const wish = document.getElementById('wish-title').value;
+      const description = document.getElementById('wish-desc').value;
+      const fileInput = document.getElementById('wish-file');
+      const file = fileInput.files[0];
+
+      const sendPayload = (fileData = null) => {
+        const payload = { member, wish, description, fileData };
+
+        google.script.run
+          .withSuccessHandler(res => {
+            loader(false);
+            if(res === "OK") {
+              notify("¡Deseo guardado con éxito!", false);
+              document.getElementById('form-wish').reset();
+              const label = document.getElementById('file-label');
+              label.innerText = "Tocar para adjuntar foto";
+              label.className = "text-base font-bold text-green-700";
+              label.parentElement.classList.add('bg-green-50', 'border-green-300');
+              label.parentElement.classList.remove('bg-blue-50', 'border-blue-300');
+              
+              document.getElementById('hidden-member').value = CURRENT_USER;
+              loadMyWishes();
+            } else {
+              notify("Error: " + res, true);
+            }
+          })
+          .withFailureHandler(err => {
+            loader(false);
+            notify("Error de red: " + err, true);
+          })
+          .uploadImageAndSaveWish(payload);
+      };
+
+      if (file) {
+        if (file.size > 8 * 1024 * 1024) { 
+           loader(false);
+           notify("La foto es muy pesada. Usa una más ligera.", true);
+           return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          const content = ev.target.result.split(',')[1]; 
+          sendPayload({ mimeType: file.type, name: file.name, data: content });
+        };
+        reader.onerror = function() {
+          loader(false);
+          notify("Error al leer la foto en el celular.", true);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        sendPayload(null);
+      }
+    }
+
+    function loadMyWishes() {
+      google.script.run
+        .withSuccessHandler(list => {
+          const mine = list ? list.filter(w => w.member && w.member.toUpperCase() === CURRENT_USER) : [];
+          document.getElementById('my-wishes').innerHTML = renderTags(mine);
+        })
+        .withFailureHandler(err => {
+           document.getElementById('my-wishes').innerHTML = '<p class="text-red-500 text-center text-sm">Error cargando deseos</p>';
+        })
+        .getWishes();
+    }
+
+    function loadAllWishes() {
+      loader(true, "Actualizando...");
+      google.script.run
+        .withSuccessHandler(list => {
+          document.getElementById('all-wishes').innerHTML = renderTags(list);
+          loader(false);
+        })
+        .withFailureHandler(err => {
+          loader(false);
+          document.getElementById('all-wishes').innerHTML = '<p class="text-red-500 text-center">Error al cargar la lista.</p>';
+        })
+        .getWishes();
+    }
+
+    function loadFamilySelect() {
+      google.script.run
+        .withSuccessHandler(list => {
+          const sel = document.getElementById('family-select');
+          if (list) {
+            const others = list.filter(m => m !== CURRENT_USER);
+            sel.innerHTML = '<option value="">Selecciona un familiar...</option>' + 
+                            others.map(m => `<option value="${m}">${m}</option>`).join('');
+          }
+        })
+        .getAllMembers();
+    }
+
+    function loadFamily(name) {
+      if(!name) {
+        document.getElementById('family-content').innerHTML = '';
+        return;
+      }
+      loader(true, "Consultando...");
+      
+      google.script.run
+        .withSuccessHandler(profile => {
+          google.script.run.withSuccessHandler(wishes => {
+            const theirs = wishes ? wishes.filter(w => w.member && w.member.toUpperCase() === name.toUpperCase()) : [];
+            
+            let html = `
+            <div class="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-2xl mb-6 border border-green-200 shadow-sm">
+              <h4 class="text-center font-bold text-green-800 mb-4 border-b border-green-200 pb-2 uppercase tracking-wide text-sm">
+                <i class="ph ph-ruler mr-1"></i> Tallas de ${name}
+              </h4>
+              <div class="grid grid-cols-2 gap-3 text-center">`;
+              
+            if(profile) {
+              const labels = {casaca: 'Casaca', polo: 'Polo', chompa: 'Chompa', pantalon: 'Pantalón', zapatillas: 'Zapatillas'};
+              Object.keys(labels).forEach(k => {
+                 html += `<div class="bg-white p-3 rounded-xl shadow-sm border border-green-100">
+                            <span class="block text-xs font-bold text-green-600 uppercase mb-1">${labels[k]}</span>
+                            <span class="font-bold text-gray-800 text-lg">${profile[k] || '-'}</span>
+                          </div>`;
+              });
+            } else { 
+              html += `<div class="col-span-2 text-gray-500 py-4 italic bg-white rounded-xl">Este usuario aún no ha subido sus tallas.</div>`; 
+            }
+            
+            html += `</div></div>
+            <h4 class="font-bold text-gray-500 mb-4 text-sm uppercase text-center tracking-widest">Lista de Deseos</h4>`;
+            html += renderTags(theirs);
+            
+            document.getElementById('family-content').innerHTML = html;
+            loader(false);
+          }).getWishes();
+        })
+        .withFailureHandler(err => {
+          loader(false);
+          notify("Error: " + err, true);
+        })
+        .getProfile(name);
+    }
+  </script>
+</body>
+</html>

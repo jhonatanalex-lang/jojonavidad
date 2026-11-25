@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Navidad Secreta — Lista de Deseos</title>
+    <meta name="description" content="Web app anónima de intercambio navideño conectada a Firebase, con cámara, tallas y vista previa de enlaces." />
+    <meta property="og:title" content="Navidad Secreta — Lista de Deseos" />
+    <meta property="og:description" content="Web app anónima de intercambio navideño conectada a Firebase, con cámara, tallas y vista previa de enlaces." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      (function () {
+        function isExtensionError(filename, err) {
+          if (typeof filename === 'string' && filename.indexOf('chrome-extension://') === 0) return true;
+          var stack = err && err.stack ? String(err.stack) : '';
+          return stack.indexOf('chrome-extension://') !== -1 && stack.indexOf('/src/') === -1;
+        }
+        window.addEventListener(
+          'error',
+          function (e) {
+            if (isExtensionError(e.filename, e.error)) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+            }
+          },
+          true
+        );
+        window.addEventListener(
+          'unhandledrejection',
+          function (e) {
+            if (isExtensionError('', e.reason)) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+            }
+          },
+          true
+        );
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('navidad_secreta_theme');
+          var isDark =
+            saved === 'dark' ||
+            (!saved &&
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-[#F3F6F4] dark:bg-[#192D2A] text-[#1A2E2B] dark:text-[#FBF3E4] antialiased selection:bg-[#D96857]/20 dark:selection:bg-[#F2D5A0]/25 selection:text-[#1A2E2B] dark:selection:text-[#FFFBF5]">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

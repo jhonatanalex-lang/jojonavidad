@@ -1,0 +1,6 @@
+{
+  "name": "Navidad Secreta — Lista de Deseos",
+  "description": "Web app anónima de intercambio navideño conectada a Firebase, con cámara, tallas y vista previa de enlaces.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
