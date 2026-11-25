@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
 import { Gift, Home, Sparkles, TreePine } from 'lucide-react';
 
+import villageHeroImg from '../assets/images/christmas_village_hero_1795481151189.jpg';
+import gift3dImg from '../assets/images/holiday_3d_gift_1795481161103.jpg';
+import sleigh3dImg from '../assets/images/holiday_3d_sleigh_1795481150215.jpg';
+import tree3dImg from '../assets/images/holiday_3d_tree_1795481148222.jpg';
+import cottage3dImg from '../assets/images/holiday_3d_cottage_1795481151136.jpg';
+
 export const HOLIDAY_ASSETS = {
-  villageHero: '/src/assets/images/christmas_village_hero_1795481151189.jpg',
-  gift3d: '/src/assets/images/holiday_3d_gift_1795481161103.jpg',
-  sleigh3d: '/src/assets/images/holiday_3d_sleigh_1795481150215.jpg',
-  tree3d: '/src/assets/images/holiday_3d_tree_1795481148222.jpg',
-  cottage3d: '/src/assets/images/holiday_3d_cottage_1795481151136.jpg',
+  villageHero: villageHeroImg,
+  gift3d: gift3dImg,
+  sleigh3d: sleigh3dImg,
+  tree3d: tree3dImg,
+  cottage3d: cottage3dImg,
 } as const;
 
 export type HolidayObjectKey = 'gift' | 'sleigh' | 'tree' | 'cottage';
